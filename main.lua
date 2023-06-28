@@ -1,6 +1,8 @@
 inspect = require("lib/inspect")
 fmt = string.format
 
+local Analog = require("analog")
+
 function printf(...)
    print(string.format(...))
 end
@@ -9,9 +11,6 @@ global_conf = {
    fullscreen = false,
 }
 global_state = {
-   analog_ring_color = {246/255, 233/255, 213/255, 100/255},
-   analog_ring_thickness = 6,
-   analog_ring_outside_radius = 14,
 }
 
 vkeyboard = {
@@ -25,15 +24,15 @@ window_margin = 10
 window_width = 0
 window_height = 0
 joystick = nil -- Currently active joystick
-left_analog = { x = 0, y = 0 }
-right_analog = { x = 0, y = 0 }
+left_analog = nil
+right_analog = nil
 
 function init_vkeyboard()
-   if vkeyboard_width > window_width then
-      vkeyboard_width = window_width - window_margin * 2
+   if vkeyboard.width + window_margin * 2 > window_width then
+      vkeyboard.width = window_width - window_margin * 2
    end
-   if vkeyboard_height > window_height then
-      vkeyboard_height = window_height - window_margin * 2
+   if vkeyboard.height + window_margin * 2 > window_height then
+      vkeyboard.height = window_height - window_margin * 2
    end
 
    -- Center vkeyboard inside window
@@ -43,14 +42,16 @@ end
 
 function init_joystick()
    joystick:setVibration(1, 1, 0.2)
-   left_analog.x = vkeyboard.x + vkeyboard.width / 3
-   left_analog.y = vkeyboard.y + vkeyboard.height / 2
-   right_analog.x = vkeyboard.x + vkeyboard.width / 3 * 2
-   right_analog.y = vkeyboard.y + vkeyboard.height / 2
-end
-
-function draw_analog(x, y)
-   love.graphics.setColor()
+   left_analog = Analog:new({
+      x = vkeyboard.x + vkeyboard.width / 3,
+      y = vkeyboard.y + vkeyboard.height / 2,
+      reach_radius = vkeyboard.width / 3
+   })
+   right_analog = Analog:new({
+      x = vkeyboard.x + vkeyboard.width / 3 * 2,
+      y = vkeyboard.y + vkeyboard.height / 2,
+      reach_radius = vkeyboard.width / 3
+   })
 end
 
 function love.load()
@@ -78,6 +79,8 @@ function love.load()
 end
 
 function love.update(dt)
+   left_analog:update(joystick:getAxis(1), joystick:getAxis(2), dt)
+   right_analog:update(joystick:getAxis(4), joystick:getAxis(5), dt)
 end
 
 function love.keyreleased(key)
@@ -95,7 +98,9 @@ function love.draw()
       return
    end
 
-   draw_analog(left_analog.x, left_analog.y)
-   draw_analog(right_analog.x, right_analog.y)
-   
+   love.graphics.setColor(1, 0, 0, 0.2)
+   love.graphics.rectangle("fill", vkeyboard.x, vkeyboard.y, vkeyboard.width, vkeyboard.height)
+
+   left_analog:draw()
+   right_analog:draw()
 end
