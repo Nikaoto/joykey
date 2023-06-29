@@ -3,8 +3,8 @@ local Vkeyboard = {
    y = 0,
    width = 1200,
    height = 480,
-   row_margin = 2,
-   column_margin = 2,
+   row_margin = 10,
+   column_margin = 10,
    container_margin = 10,
    container_width = nil,
    container_height = nil,
@@ -51,6 +51,7 @@ function Vkeyboard:rearrange_keys()
       for ci, btn in ipairs(row) do
          btn.x = btn_x
          btn.y = row_y
+         btn:resize_collider()
          btn_x = btn_x + btn.width + self.column_margin
       end
       local row_height = max_in_arr(row, function(btn) return btn.height end)
@@ -77,6 +78,15 @@ function Vkeyboard:draw()
    for i, row in ipairs(self.button_rows) do
       for j, btn in ipairs(row) do
          btn:draw()
+      end
+   end
+end
+
+function Vkeyboard:update(dt)
+   -- Update buttons
+   for i, row in ipairs(self.button_rows) do
+      for j, btn in ipairs(row) do
+         btn:update(dt)
       end
    end
 end

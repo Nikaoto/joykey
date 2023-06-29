@@ -61,4 +61,7 @@ function Analog:draw()
    )
 end
 
+function Analog:trigger_btn_collision()
+end
+
 return Analog

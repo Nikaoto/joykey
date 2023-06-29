@@ -1,5 +1,6 @@
 require("map_funcs")
 
+tween = require("lib/tween")
 inspect = require("lib/inspect")
 function dumptable(t) print(inspect(t)) end
 fmt = string.format
@@ -26,10 +27,24 @@ window_height = 0
 
 joystick = nil -- Currently active joystick
 axis_deadzone = 0.08
+axis_dampen_amount = 0.8
 
 vkeyboard = nil
 left_analog = nil
 right_analog = nil
+
+function aabb(x1, y1, w1, h1, x2, y2, w2, h2)
+   return
+      ((x1 <= x2 and x1 + w1 >= x2) or (x1 >= x2 and x2 + w2 >= x1))
+      and
+      ((y1 <= y2 and y1 + h1 >= y2) or (y1 >= y2 and y2 + h2 >= y1))
+end
+
+function aabb_objs(o1, o2)
+   return aabb(
+      o1.x, o1.y, o1.width, o1.height,
+      o2.x, o2.y, o2.width, o2.height)
+end
 
 function init_analogs()
    local margin_x_from_edge = (vkeyboard.width / 3) * 0.8
@@ -63,6 +78,10 @@ function apply_deadzone(val)
    else
       return 0
    end
+end
+
+function mod_axis(val)
+   return apply_deadzone(val) * axis_dampen_amount
 end
 
 function love.load()
@@ -103,16 +122,45 @@ end
 function love.update(dt)
    if joystick == nil then try_init_joystick() end
 
+   -- Do controls
    if left_analog then
-      local lx = apply_deadzone(joystick:getAxis(1))
-      local ly = apply_deadzone(joystick:getAxis(2))
+      local lx = mod_axis(joystick:getAxis(1))
+      local ly = mod_axis(joystick:getAxis(2))
       left_analog:update(lx, ly, dt)
    end
    if right_analog then
-      local rx = apply_deadzone(joystick:getAxis(4))
-      local ry = apply_deadzone(joystick:getAxis(5))
+      local rx = mod_axis(joystick:getAxis(4))
+      local ry = mod_axis(joystick:getAxis(5))
       right_analog:update(rx, ry, dt)
    end
+
+   -- Check analog collisions
+   for _, row in ipairs(vkeyboard.button_rows) do
+      for _, btn in ipairs(row) do
+         if aabb(
+            btn.collider_x,          btn.collider_y,
+            btn.collider_width,      btn.collider_height,
+            left_analog.x,           left_analog.y,
+            left_analog.ring_radius, left_analog.ring_radius
+         ) then
+            btn.is_colliding = true
+            left_analog:trigger_btn_collision()
+         elseif aabb(
+            btn.collider_x,           btn.collider_y,
+            btn.collider_width,       btn.collider_height,
+            right_analog.x,           right_analog.y,
+            right_analog.ring_radius, right_analog.ring_radius
+         ) then
+            btn.is_colliding = true
+            right_analog:trigger_btn_collision()
+         else
+            btn.is_colliding = false
+         end
+      end
+   end
+
+   -- Update keybaord
+   vkeyboard:update(dt)
 end
 
 function love.keyreleased(key)
