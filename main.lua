@@ -33,6 +33,7 @@ window_height = 0
 joystick = nil -- Currently active joystick
 axis_deadzone = 0.08
 axis_dampen_amount = 0.8
+b_was_down = false
 
 textbox = nil
 vkeyboard = nil
@@ -104,8 +105,8 @@ function love.load()
    key_font = lg.newFont("fonts/courier.ttf", key_font_size)
    local make_vkeybutton = function (txt)
       return Vkeybutton:new({
-         draw_collider = false,
-         draw_drawable_footprint = true,
+         draw_collider = true,
+         draw_drawable_footprint = false,
          text = txt,
          font = key_font,
          data = { type = "char", char = txt }, -- TODO: expand this later
@@ -118,7 +119,7 @@ function love.load()
       width = 1200,
       height = 480,
       recenter = true,
-      draw_collider = false,
+      draw_collider = true,
       button_rows = {
          map_str("1234567890", make_vkeybutton),
          map_str("qwertyuiop", make_vkeybutton),
@@ -158,20 +159,34 @@ function love.update(dt)
    -- Triggers
    if joystick:isGamepadDown("leftshoulder") then
       if left_analog.colliding_btn then
-         textbox:append_text(left_analog.colliding_btn.data.char)
+         left_analog.currently_selected_btn = left_analog.colliding_btn
          --left_analog.colliding_btn:set_state("selected")
+      end
+   else
+      if left_analog.colliding_btn and left_analog.currently_selected_btn and
+         left_analog.colliding_btn == left_analog.currently_selected_btn then
+         textbox:append_text(left_analog.colliding_btn.data.char)
+         left_analog.currently_selected_btn = nil
       end
    end
    if joystick:isGamepadDown("rightshoulder") then
       if right_analog.colliding_btn then
-         textbox:append_text(right_analog.colliding_btn.data.char)
+         right_analog.currently_selected_btn = right_analog.colliding_btn
          --right_analog.colliding_btn:set_state("selected")
       end
+   else
+      if right_analog.colliding_btn and right_analog.currently_selected_btn and
+         right_analog.colliding_btn == right_analog.currently_selected_btn then
+         textbox:append_text(right_analog.colliding_btn.data.char)
+         right_analog.currently_selected_btn = nil
+      end      
    end
 
-
    if joystick:isGamepadDown("b") then
+      b_was_down = true      
+   elseif b_was_down then
       textbox:delete_last_char()
+      b_was_down = false
    end
 
    -- Check analog collisions
@@ -183,16 +198,22 @@ function love.update(dt)
             left_analog.x,               left_analog.y,
             left_analog.collider_radius, left_analog.collider_radius
          ) then
-            btn.is_colliding = true
-            left_analog:trigger_btn_collision(btn)
+            if left_analog.colliding_btn == nil or
+             not left_analog.colliding_btn.is_colliding then
+               btn.is_colliding = true
+               left_analog.colliding_btn = btn
+            end
          elseif aabb(
             btn.collider_x,               btn.collider_y,
             btn.collider_width,           btn.collider_height,
             right_analog.x,               right_analog.y,
             right_analog.collider_radius, right_analog.collider_radius
          ) then
-            btn.is_colliding = true
-            right_analog:trigger_btn_collision(btn)
+            if right_analog.colliding_btn == nil or
+             not right_analog.colliding_btn.is_colliding then
+               btn.is_colliding = true
+               right_analog.colliding_btn = btn
+            end
          else
             btn.is_colliding = false
          end

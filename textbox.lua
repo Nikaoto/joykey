@@ -70,7 +70,7 @@ end
 function Textbox:refresh()
    self.text_obj:set(self.text_str or " ")
    local text_height = self.text_obj:getHeight()
-   local text_width = self.text_obj:getWidth()
+   local text_width = self.text_str and self.text_obj:getWidth() or 0
 
    self.text_x = self.x + self.text_margin_left
    self.text_y = self.y + (self.height - text_height) / 2 + self.text_offset_y
@@ -91,6 +91,12 @@ end
 
 function Textbox:delete_last_char()
    if not self.text_str then
+      return
+   end
+
+   if #self.text_str == 1 then
+      self.text_str = nil
+      self:refresh()
       return
    end
 
@@ -115,8 +121,10 @@ function Textbox:draw_actual()
    )
 
    -- Draw the text
-   lg.setColor(self.text_color)
-   lg.draw(self.text_obj, self.text_x, self.text_y)
+   if self.text_str then
+      lg.setColor(self.text_color)
+      lg.draw(self.text_obj, self.text_x, self.text_y)
+   end
 end
 
 function Textbox:draw()

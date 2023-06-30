@@ -4,14 +4,15 @@ local Vkeybutton = {
    x = 0,       collider_x = 0,
    y = 0,       collider_y = 0,
    z = 2,
-   width = 100,  collider_width = 60,
-   height = 100, collider_height = 80,
+   width = 100,  collider_width = 100,
+   height = 100, collider_height = 100,
    scale = 1,
+   normal_scale = 1,
    hovered_scale = 1.4,
    normal_z = 2,
    hovered_z = 3,
 
-   color = {32/255, 32/255, 32/255, 1},
+   color = {0.2, 0.2, 0.2, 1},
    text_color = {1, 1, 1, 1},
    text = nil,
    font = nil,
@@ -80,6 +81,7 @@ function Vkeybutton:init()
 
    if self.canvas == nil then
       self.canvas = lg.newCanvas(self.width, self.height)
+      --self.canvas:setFilter("nearest")
    end
 
    -- Predraw onto canvas
@@ -135,7 +137,7 @@ function Vkeybutton:draw_actual()
    end
    lg.setBlendMode("alpha")
 
-   -- Collider
+   -- Draw collider
    if self.draw_collider then
       lg.setColor(0, 0, 1, 1)
       lg.rectangle(
@@ -152,30 +154,39 @@ function Vkeybutton:draw()
    deep.queue(self.z, self.draw_actual, self)
 end
 
+function Vkeybutton:update_collider()
+   self.collider_x = self.x - (self.scale - 1)/2 * self.width
+   self.collider_y = self.y - (self.scale - 1)/2 * self.height
+   self.collider_width = self.width * self.scale
+   self.collider_height = self.height * self.scale
+end
+
 function Vkeybutton:update(dt)
+   -- Update collider
+   self:update_collider()
+
    -- Check collision enter
    if not self.was_colliding and self.is_colliding then
       self.z = self.hovered_z
       self.tweens.scale = tween.new(0.1, self, {
          scale = self.hovered_scale,
-         -- TODO:
-         -- collider_width = cw,
-         -- collider_height = ch,
          tweens = { scale = nil },
       }, "outQuad")
    elseif self.was_colliding and not self.is_colliding then
       -- Check collision exit
       self.z = self.normal_z
       self.tweens.scale = tween.new(0.2, self, {
-         scale = 1,
+         scale = self.normal_scale,
          tweens = { scale = nil },
       }, "outCubic")
    end
 
+   -- Update tweens
    if self.tweens.scale then
       self.tweens.scale:update(dt)
    end
 
+   -- Save collision state for next frame
    if not self.is_colliding then
       self.was_colliding = true
    else

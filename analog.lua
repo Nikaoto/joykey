@@ -12,6 +12,8 @@ local Analog = {
    reach_radius = 200,
    anchor_x = nil,
    anchor_y = nil,
+   colliding_btn = nil,
+   currently_selected_btn = nil,
    x = 0,
    y = 0,
    z = 10,
@@ -65,10 +67,6 @@ end
 
 function Analog:draw()
    deep.queue(self.z, self.draw_actual, self)
-end
-
-function Analog:trigger_btn_collision(btn)
-   self.colliding_btn = btn
 end
 
 return Analog
