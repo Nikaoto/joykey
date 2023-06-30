@@ -4,6 +4,7 @@ local lg = love.graphics
 local Analog = {
    ring_color = {246/255, 233/255, 213/255, 0.8},
    shadow_color = {0, 0, 0, 0.3},
+   collider_radius = 6,
    ring_radius = 14,
    ring_thickness = 7,
    inner_shadow_thickness = 3,
@@ -12,7 +13,8 @@ local Analog = {
    anchor_x = nil,
    anchor_y = nil,
    x = 0,
-   y = 0
+   y = 0,
+   z = 10,
 }
 
 function Analog:new(o)
@@ -37,7 +39,7 @@ local function draw_ring(x, y, outer_r, thickness)
    end
 end
 
-function Analog:draw()
+function Analog:draw_actual()
    -- Draw main ring
    lg.setColor(self.ring_color)
    draw_ring(self.x, self.y, self.ring_radius, self.ring_thickness)
@@ -61,7 +63,12 @@ function Analog:draw()
    )
 end
 
-function Analog:trigger_btn_collision()
+function Analog:draw()
+   deep.queue(self.z, self.draw_actual, self)
+end
+
+function Analog:trigger_btn_collision(btn)
+   self.colliding_btn = btn
 end
 
 return Analog

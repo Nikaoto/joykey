@@ -1,6 +1,7 @@
 local Vkeyboard = {
    x = 0,
    y = 0,
+   z = 1,
    width = 1200,
    height = 480,
    row_margin = 10,
@@ -9,6 +10,7 @@ local Vkeyboard = {
    container_width = nil,
    container_height = nil,
    recenter = false,
+   draw_collider = false,
    buttons = {},
 }
 
@@ -69,10 +71,16 @@ function Vkeyboard:init()
    self:rearrange_keys()
 end
 
-function Vkeyboard:draw()
+function Vkeyboard:draw_actual()
    -- Draw outline
-   love.graphics.setColor(1, 0, 0, 1)
-   love.graphics.rectangle("line", self.x, self.y, self.width, self.height)
+   if self.draw_collider then
+      love.graphics.setColor(1, 0, 0, 1)
+      love.graphics.rectangle("line", self.x, self.y, self.width, self.height)
+   end
+end
+
+function Vkeyboard:draw()
+   deep.queue(self.z, self.draw_actual, self)
 
    -- Draw buttons
    for i, row in ipairs(self.button_rows) do

@@ -1,23 +1,28 @@
 require("map_funcs")
+require("love_extensions")
 
+deep = require("lib/deep")
 tween = require("lib/tween")
 inspect = require("lib/inspect")
 function dumptable(t) print(inspect(t)) end
 fmt = string.format
 function printf(...) print(string.format(...)) end
 
+local Textbox = require("textbox")
 local Analog = require("analog")
 local Vkeyboard = require("vkeyboard")
 local Vkeybutton = require("vkeybutton")
 local lg = love.graphics
 
+local text_font = nil
+local text_font_size = 56
 local key_font = nil
-local key_font_size = 24
+local key_font_size = 56
 
 global_conf = {
    fullscreen = true,
-   alt_background_color = {77/255, 169/255, 220/255, 1},
-   background_color = {89/255, 157/255, 220/255},
+   --background_color = {77/255, 169/255, 220/255, 1},
+   background_color = {89/255, 157/255, 220/255, 1},
 }
 global_state = {
 }
@@ -29,6 +34,7 @@ joystick = nil -- Currently active joystick
 axis_deadzone = 0.08
 axis_dampen_amount = 0.8
 
+textbox = nil
 vkeyboard = nil
 left_analog = nil
 right_analog = nil
@@ -93,25 +99,40 @@ function love.load()
    })
    love.window.setDisplaySleepEnabled(false)
 
-   -- TODO: love.window.setIcon()
-
    window_width, window_height = love.graphics.getDimensions()
 
    key_font = lg.newFont("fonts/courier.ttf", key_font_size)
    local make_vkeybutton = function (txt)
-      return Vkeybutton:new({ text = txt, font = key_font })
+      return Vkeybutton:new({
+         draw_collider = false,
+         draw_drawable_footprint = true,
+         text = txt,
+         font = key_font,
+         data = { type = "char", char = txt }, -- TODO: expand this later
+      })
    end
 
    vkeyboard = Vkeyboard:new({
       container_width = window_width,
       container_height = window_height,
+      width = 1200,
+      height = 480,
       recenter = true,
+      draw_collider = false,
       button_rows = {
          map_str("1234567890", make_vkeybutton),
          map_str("qwertyuiop", make_vkeybutton),
          map_str("asdfghjkl\"", make_vkeybutton),
          map_str("zxcvbnm,.!",  make_vkeybutton),
       }
+   })
+
+   text_font = lg.newFont("fonts/courier.ttf", text_font_size)
+   textbox = Textbox:new({
+      font = text_font,
+      width = 1200,
+      x = (window_width - 1200) / 2,
+      y = 120,
    })
    
    try_init_joystick()
@@ -122,37 +143,56 @@ end
 function love.update(dt)
    if joystick == nil then try_init_joystick() end
 
-   -- Do controls
+   -- Do axis controls
    if left_analog then
-      local lx = mod_axis(joystick:getAxis(1))
-      local ly = mod_axis(joystick:getAxis(2))
+      local lx = mod_axis(joystick:getGamepadAxis("leftx"))
+      local ly = mod_axis(joystick:getGamepadAxis("lefty"))
       left_analog:update(lx, ly, dt)
    end
    if right_analog then
-      local rx = mod_axis(joystick:getAxis(4))
-      local ry = mod_axis(joystick:getAxis(5))
+      local rx = mod_axis(joystick:getGamepadAxis("rightx"))
+      local ry = mod_axis(joystick:getGamepadAxis("righty"))
       right_analog:update(rx, ry, dt)
+   end
+
+   -- Triggers
+   if joystick:isGamepadDown("leftshoulder") then
+      if left_analog.colliding_btn then
+         textbox:append_text(left_analog.colliding_btn.data.char)
+         --left_analog.colliding_btn:set_state("selected")
+      end
+   end
+   if joystick:isGamepadDown("rightshoulder") then
+      if right_analog.colliding_btn then
+         textbox:append_text(right_analog.colliding_btn.data.char)
+         --right_analog.colliding_btn:set_state("selected")
+      end
+   end
+
+
+   if joystick:isGamepadDown("b") then
+      textbox:delete_last_char()
    end
 
    -- Check analog collisions
    for _, row in ipairs(vkeyboard.button_rows) do
       for _, btn in ipairs(row) do
          if aabb(
-            btn.collider_x,          btn.collider_y,
-            btn.collider_width,      btn.collider_height,
-            left_analog.x,           left_analog.y,
-            left_analog.ring_radius, left_analog.ring_radius
+            btn.collider_x,              btn.collider_y,
+            btn.collider_width,          btn.collider_height,
+            left_analog.x,               left_analog.y,
+            left_analog.collider_radius, left_analog.collider_radius
          ) then
             btn.is_colliding = true
-            left_analog:trigger_btn_collision()
+            left_analog:trigger_btn_collision(btn)
          elseif aabb(
-            btn.collider_x,           btn.collider_y,
-            btn.collider_width,       btn.collider_height,
-            right_analog.x,           right_analog.y,
-            right_analog.ring_radius, right_analog.ring_radius
+            btn.collider_x,               btn.collider_y,
+            btn.collider_width,           btn.collider_height,
+            right_analog.x,               right_analog.y,
+            right_analog.collider_radius, right_analog.collider_radius
          ) then
             btn.is_colliding = true
-            right_analog:trigger_btn_collision()
+            right_analog:trigger_btn_collision(btn)
          else
             btn.is_colliding = false
          end
@@ -182,4 +222,7 @@ function love.draw()
    vkeyboard:draw()
    left_analog:draw()
    right_analog:draw()
+   textbox:draw()
+
+   deep.execute()
 end
