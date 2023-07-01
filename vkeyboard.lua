@@ -49,14 +49,18 @@ end
 function Vkeyboard:rearrange_keys()
    local row_y = self.y
    for ri, row in ipairs(self.button_rows) do
-      local btn_x = self.x
+      local row_width = reduce_arr(row, 0, function(acc, btn)
+         return acc + btn.width + self.column_margin
+      end)
+      local row_height = max_in_arr(row, function(btn) return btn.height end)
+      local btn_x = self.x + (self.width - row_width)/2
       for ci, btn in ipairs(row) do
          btn.x = btn_x
          btn.y = row_y
          btn:resize_collider()
          btn_x = btn_x + btn.width + self.column_margin
       end
-      local row_height = max_in_arr(row, function(btn) return btn.height end)
+
       row_y = row_y + row_height + self.row_margin
    end
 end

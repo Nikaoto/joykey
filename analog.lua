@@ -2,8 +2,12 @@
 local lg = love.graphics
 
 local Analog = {
-   ring_color = {246/255, 233/255, 213/255, 0.8},
-   shadow_color = {0, 0, 0, 0.3},
+   ring_color = {0, 0, 0, 0},
+   shadow_color = {0, 0, 0, 0},
+   active_ring_color = {246/255, 233/255, 213/255, 0.9},
+   active_shadow_color = {0, 0, 0, 0.4},
+   inactive_ring_color = {200/255, 200/255, 200/255, 0.6},
+   inactive_shadow_color = {0, 0, 0, 0.1},
    collider_radius = 6,
    ring_radius = 14,
    ring_thickness = 7,
@@ -14,9 +18,16 @@ local Analog = {
    anchor_y = nil,
    colliding_btn = nil,
    currently_selected_btn = nil,
+   idle_time = 0,
+   inactive_timeout = 2,
    x = 0,
    y = 0,
    z = 10,
+   state = "inactive",
+   print_state = false,
+   tweens = {
+      fade = nil,
+   },
 }
 
 function Analog:new(o)
@@ -26,12 +37,54 @@ function Analog:new(o)
 
    setmetatable(o, self)
    self.__index = self
+
+   o:init()
    return o
+end
+
+function Analog:init()
+   self:set_state("active")
+end
+
+function Analog:set_state(new_state)
+   if self.state == new_state then return end
+
+   if new_state == "active" then
+      self.idle_time = 0
+      self.tweens.fade = tween.new(0.3, self, {
+         ring_color = self.active_ring_color,
+         shadow_color = self.active_shadow_color,
+         tweens = { fade = nil },
+      }, "outQuad")
+      self.state = new_state
+   elseif new_state == "inactive" then
+      self.tweens.fade = tween.new(1, self, {
+         ring_color = self.inactive_ring_color,
+         shadow_color = self.inactive_shadow_color,
+         tweens = { fade = nil },
+      }, "outQuad")
+      self.state = new_state
+   end
 end
 
 function Analog:update(tilt_x, tilt_y, dt)
    self.x = self.anchor_x + self.reach_radius * tilt_x
    self.y = self.anchor_y + self.reach_radius * tilt_y
+
+   if self.tweens.fade then
+      self.tweens.fade:update(dt)
+   end
+
+   -- TODO: fix some bug with this?
+   if tilt_x == 0 and tilt_y == 0 then
+      self.idle_time = self.idle_time + dt
+      if self.idle_time > self.inactive_timeout then
+         self:set_state("inactive")
+      end
+      return
+   end
+
+   self:set_state("active")
 end
 
 local function draw_ring(x, y, outer_r, thickness)
@@ -63,6 +116,11 @@ function Analog:draw_actual()
       self.ring_radius - self.ring_thickness,
       self.inner_shadow_thickness
    )
+
+   if self.print_state then
+      lg.setColor(1, 1, 1, 1)
+      lg.print(self.state, self.x, self.y)
+   end
 end
 
 function Analog:draw()

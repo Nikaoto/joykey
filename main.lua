@@ -20,7 +20,7 @@ local key_font = nil
 local key_font_size = 56
 
 global_conf = {
-   fullscreen = true,
+   fullscreen = false,
    --background_color = {77/255, 169/255, 220/255, 1},
    background_color = {89/255, 157/255, 220/255, 1},
 }
@@ -56,11 +56,13 @@ end
 function init_analogs()
    local margin_x_from_edge = (vkeyboard.width / 3) * 0.8
    left_analog = Analog:new({
+      print_state = true,
       x = vkeyboard.x + margin_x_from_edge,
       y = vkeyboard.y + vkeyboard.height / 2,
       reach_radius = vkeyboard.width / 4
    })
    right_analog = Analog:new({
+      print_state = true,
       x = vkeyboard.x + vkeyboard.width - margin_x_from_edge,
       y = vkeyboard.y + vkeyboard.height / 2,
       reach_radius = vkeyboard.width / 4
@@ -109,9 +111,17 @@ function love.load()
          draw_drawable_footprint = false,
          text = txt,
          font = key_font,
-         data = { type = "char", char = txt }, -- TODO: expand this later
+         data = { type = "char", char = txt },
       })
    end
+   local spacebar = Vkeybutton:new({
+      draw_collider = true,
+      draw_drawable_footprint = false,
+      text = " ",
+      width = 800,
+      font = key_font,
+      data = { type = "char", char = " " },
+   })
 
    vkeyboard = Vkeyboard:new({
       container_width = window_width,
@@ -125,6 +135,7 @@ function love.load()
          map_str("qwertyuiop", make_vkeybutton),
          map_str("asdfghjkl\"", make_vkeybutton),
          map_str("zxcvbnm,.!",  make_vkeybutton),
+         {spacebar},
       }
    })
 

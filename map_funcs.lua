@@ -1,3 +1,11 @@
+function reduce_arr(arr, init, fn)
+   local acc = init
+   for i, v in ipairs(arr) do
+      acc = fn(acc, v, i, arr)
+   end
+   return acc
+end
+
 function map_str(str, fn)
    local ret = {}
    for i=1, #str do
@@ -10,7 +18,7 @@ end
 function map_arr(arr, fn)
    local ret = {}
    for i=1, #arr do
-      table.insert(ret, fn(arr[i], i, arr))
+      table.insert(ret, fn(arr[i], i, arr) or arr[i])
    end
    return ret
 end
