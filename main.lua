@@ -1,5 +1,6 @@
 require("map_funcs")
 require("love_extensions")
+require("geometria")
 
 deep = require("lib/deep")
 tween = require("lib/tween")
@@ -20,7 +21,7 @@ local key_font = nil
 local key_font_size = 56
 
 global_conf = {
-   fullscreen = false,
+   fullscreen = true,
    --background_color = {77/255, 169/255, 220/255, 1},
    background_color = {89/255, 157/255, 220/255, 1},
 }

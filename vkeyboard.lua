@@ -53,7 +53,8 @@ function Vkeyboard:rearrange_keys()
          return acc + btn.width + self.column_margin
       end)
       local row_height = max_in_arr(row, function(btn) return btn.height end)
-      local btn_x = self.x + (self.width - row_width)/2
+      -- TODO: fix centering bug
+      local btn_x = center_1D(self.x, self.width, row_width)
       for ci, btn in ipairs(row) do
          btn.x = btn_x
          btn.y = row_y
