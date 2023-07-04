@@ -1,6 +1,7 @@
 
 local lg = love.graphics
 
+local Collider = require("collider")
 local Analog = {
    ring_color = {0, 0, 0, 0},
    shadow_color = {0, 0, 0, 0},
@@ -16,7 +17,7 @@ local Analog = {
    reach_radius = 200,
    anchor_x = nil,
    anchor_y = nil,
-   colliding_btn = nil,
+   collider = nil,
    currently_selected_btn = nil,
    idle_time = 0,
    inactive_timeout = 2,
@@ -44,6 +45,14 @@ function Analog:new(o)
 end
 
 function Analog:init()
+   self.collider = Collider:new({
+      parent = self,
+      x = self.x - self.collider_radius/2,
+      y = self.y - self.collider_radius/2,
+      z = self.z,
+      width = self.collider_radius * 2,
+      height = self.collider_radius * 2,
+   })
    self:set_state("active")
 end
 
@@ -72,14 +81,39 @@ function Analog:set_state(new_state)
       }, "outQuad")
       self.state = new_state
    elseif new_state == "inactive" then
-      self.tweens.fade = tween.new(1, self, {
+      self.tweens.fade = tween.new(0.9, self, {
          ring_color = self.inactive_ring_color,
          shadow_color = self.inactive_shadow_color,
          tweens = { fade = nil },
       }, "outQuad", function(self)
-         self.colliding_btn.is_colliding = false
+         for col, time in pairs(self.collider.collisions) do
+            col:collision_exit(self.collider)
+            col.parent:set_state("idle")
+         end
+         self.collider.collisions = {}
       end)
       self.state = new_state
+   end
+end
+
+function Analog:select_btn()
+   local col = self.collider:get_first_colliding()
+   if not col or not col.parent then return end
+   self.selected_btn = col.parent
+   col.parent:set_state("selected")
+end
+
+function Analog:accept_btn()
+   local col = self.collider:get_first_colliding()
+   if not col or not col.parent then return end
+
+   if self.selected_btn == col.parent then
+      col.parent:set_state("accepted")
+      return col.parent
+   else
+      print("false accept")
+      -- TODO: do 'false accepted' state for the button
+      return nil
    end
 end
 
@@ -88,6 +122,8 @@ function Analog:update(tilt_x, tilt_y, dt)
    tilt_y = mod_axis(tilt_y)
    self.x = self.anchor_x + self.reach_radius * tilt_x
    self.y = self.anchor_y + self.reach_radius * tilt_y
+   self.collider.x = self.x - self.collider.width/2
+   self.collider.y = self.y - self.collider.height/2
 
    if self.tweens.fade then
       self.tweens.fade:update(dt)
@@ -142,16 +178,16 @@ function Analog:draw_actual()
 
    -- Draw reach radius
    if self.draw_radius or global_conf.debug_mode then
-      lg.setColor(0, 1, 1, 0.3)
-      lg.circle("fill", self.anchor_x, self.anchor_y,
-                self.reach_radius * global_conf.axis_dampen_amount)
+      lg.setColor(0, 1, 1, 1)
+      local s = self.reach_radius * 2 * global_conf.axis_dampen_amount
+      lg.rectangle("line", self.anchor_x - s/2, self.anchor_y - s/2, s, s, 60, 60)
    end
 
    -- Draw deadzone
    if self.draw_deadzone or global_conf.debug_mode then
-      lg.setColor(0, 1, 0.7, 0.3)
-      lg.circle("fill", self.anchor_x, self.anchor_y,
-                self.reach_radius * global_conf.axis_deadzone)
+      lg.setColor(0, 1, 0.7, 1)
+      local s = self.reach_radius * global_conf.axis_deadzone * 2
+      lg.rectangle("line", self.anchor_x - s/2, self.anchor_y - s/2, s, s, 10, 10)
    end
 end
 

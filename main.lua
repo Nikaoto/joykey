@@ -8,7 +8,9 @@ inspect = require("lib/inspect")
 function dumptable(t) print(inspect(t)) end
 fmt = string.format
 function printf(...) print(string.format(...)) end
+function get_time() return love.timer.getTime() end
 
+local Input = require("input")
 local Textbox = require("textbox")
 local Analog = require("analog")
 local Vkeyboard = require("vkeyboard")
@@ -24,7 +26,7 @@ global_conf = {
    debug_mode = false,
    axis_deadzone = 0.08,
    axis_dampen_amount = 0.8,
-   fullscreen = true,
+   fullscreen = false,
    --background_color = {77/255, 169/255, 220/255, 1},
    background_color = {89/255, 157/255, 220/255, 1},
 }
@@ -34,13 +36,103 @@ global_state = {
 window_width = 0
 window_height = 0
 
-joystick = nil -- Currently active joystick
-b_was_down = false
-
 textbox = nil
 vkeyboard = nil
 left_analog = nil
 right_analog = nil
+
+joystick = nil -- Currently active joystick
+jinput = nil -- Joystick input module
+local jinput_conf = {
+   capture_fns = {
+      is_button_down = function(inp, btn, cnf, src)
+         return src:isGamepadDown(btn)
+      end,
+      get_axis = function(inp, axis, cnf, src)
+         return src:getGamepadAxis(axis)
+      end,
+   },
+   buttons = {
+      ["a"] =             { on_release = "done_accept",   on_press = "done_select"   },
+      ["b"] =             { on_release = "exit_accept",   on_press = "exit_select"   },
+      ["x"] =             { on_release = "delete_accept", on_press = "delete_select" },
+      ["y"] =             { on_release = "space_accept",  on_press = "space_select"  },
+      ["leftshoulder"] =  { on_release = "accept_left",   on_press = "select_left"   },
+      ["rightshoulder"] = { on_release = "accept_right",  on_press = "select_right"  },
+      ["leftstick"] =     { on_release = "accept_left",   on_press = "select_left"   },
+      ["rightstick"] =    { on_release = "accept_right",  on_press = "select_right"  },
+      ["dpup"] =          { on_release = nil,             on_press = "caret_up"      },
+      ["dpdown"] =        { on_release = nil,             on_press = "caret_down"    },
+      ["dpleft"] =        { on_release = nil,             on_press = "caret_left"    },
+      ["dpright"] =       { on_release = nil,             on_press = "caret_right"   },
+   },
+   axii = {
+      ["leftx"] = {},
+      ["lefty"] = {},
+      ["rightx"] = {},
+      ["righty"] = {},
+      ["triggerleft"] = {},
+      ["triggerright"] = {},
+   },
+}
+
+jinput_conf.buttons["dpup"].capture_is_down = function(inp, btn, cnf, src)
+   return src:getHat(1):find('u') ~= nil
+end
+jinput_conf.buttons["dpdown"].capture_is_down = function(inp, btn, cnf, src)
+   return src:getHat(1):find('d') ~= nil
+end
+jinput_conf.buttons["dpleft"].capture_is_down = function(inp, btn, cnf, src)
+   return src:getHat(1):find('l') ~= nil
+end
+jinput_conf.buttons["dpright"].capture_is_down = function(inp, btn, cnf, src)
+   return src:getHat(1):find('r') ~= nil
+end
+
+-- Maps 'action name' -> 'action callback'
+local jinput_actions = {
+   ["delete_select"] = function() print("jinput_action: delete_select") end,
+   ["exit_select"] =   function() print("jinput_action: exit_select") end,
+   ["done_select"] =   function() print("jinput_action: done_select") end,
+   ["space_select"] =  function() print("jinput_action: space_select") end,
+   ["delete_accept"] = function()
+      print("jinput_action: delete_accept")
+      textbox:delete_last_char()
+   end,
+   ["exit_accept"] =   function() print("jinput_action: exit_accept") end,
+   ["done_accept"] =   function() print("jinput_action: done_accept") end,
+   ["space_accept"] =  function() print("jinput_action: space_accept") end,
+   ["next_layout"] =   function() print("jinput_action: next_layout") end,
+   ["prev_layout"] =   function() print("jinput_action: prev_layout") end,
+
+   ["select_left"] =   function()
+      print("jinput_action: select_left")
+      left_analog:select_btn()
+   end,
+   ["accept_left"] =   function()
+      print("jinput_action: accept_left")
+      local accepted_btn = left_analog:accept_btn()
+      if accepted_btn then
+         textbox:append_text(accepted_btn.data.char)
+      end
+   end,
+   ["select_right"] =  function()
+      print("jinput_action: select_right")
+      right_analog:select_btn()
+   end,
+   ["accept_right"] =  function()
+      print("jinput_action: accept_right")
+      local accepted_btn = right_analog:accept_btn()
+      if accepted_btn then
+         textbox:append_text(accepted_btn.data.char)
+      end
+   end,
+   ["shift"] =         function() print("jinput_action: shift") end,
+   ["caret_left"] =    function() print("jinput_action: caret_left") end,
+   ["caret_right"] =   function() print("jinput_action: caret_right") end,
+   ["caret_up"] =      function() print("jinput_action: caret_up") end,
+   ["caret_down"] =    function() print("jinput_action: caret_down") end,
+}
 
 function aabb(x1, y1, w1, h1, x2, y2, w2, h2)
    return
@@ -74,6 +166,7 @@ function try_init_joystick()
    if #js > 0 then
       joystick = js[1]
       joystick:setVibration(1, 1, 0.2)
+      jinput = Input:new(jinput_conf)
       init_analogs()
       return true
    end
@@ -82,8 +175,8 @@ function try_init_joystick()
 end
 
 function love.load()
-   love.window.updateMode({
-      borderless = false,
+   love.window.updateMode(1920, 1080, {
+      borderless = true,
       centered = true,
       fullscreen = global_conf.fullscreen,
       fullscreentype = "desktop",
@@ -138,78 +231,57 @@ end
 function love.update(dt)
    if joystick == nil then try_init_joystick() end
 
-   -- Do axis controls
+   -- Capture joystick inputs
+   jinput:capture_all(joystick)
+
+   -- Trigger joystick button actions
+   for btn_name, btn_conf in pairs(jinput.conf.buttons) do
+      local btn_state = jinput.state.buttons[btn_name]
+
+      -- on_release
+      if btn_state.just_released then
+         local action = jinput_actions[btn_conf.on_release]
+         if action then action() end
+      end
+
+      -- on_press
+      if btn_state.just_pressed then
+         local action = jinput_actions[btn_conf.on_press]
+         if action then action() end
+      end
+   end
+
+   -- Trigger joystick asxii actions
    if left_analog then
-      local lx = joystick:getGamepadAxis("leftx")
-      local ly = joystick:getGamepadAxis("lefty")
+      local lx = jinput.state.axii["leftx"].value
+      local ly = jinput.state.axii["lefty"].value
       left_analog:update(lx, ly, dt)
    end
    if right_analog then
-      local rx = joystick:getGamepadAxis("rightx")
-      local ry = joystick:getGamepadAxis("righty")
+      local rx = jinput.state.axii["rightx"].value
+      local ry = jinput.state.axii["righty"].value
       right_analog:update(rx, ry, dt)
    end
 
-   -- Triggers
-   if joystick:isGamepadDown("leftshoulder") then
-      if left_analog.colliding_btn then
-         left_analog.currently_selected_btn = left_analog.colliding_btn
-         --left_analog.colliding_btn:set_state("selected")
-      end
-   else
-      if left_analog.colliding_btn and left_analog.currently_selected_btn and
-         left_analog.colliding_btn == left_analog.currently_selected_btn then
-         textbox:append_text(left_analog.colliding_btn.data.char)
-         left_analog.currently_selected_btn = nil
-      end
-   end
-   if joystick:isGamepadDown("rightshoulder") then
-      if right_analog.colliding_btn then
-         right_analog.currently_selected_btn = right_analog.colliding_btn
-         --right_analog.colliding_btn:set_state("selected")
-      end
-   else
-      if right_analog.colliding_btn and right_analog.currently_selected_btn and
-         right_analog.colliding_btn == right_analog.currently_selected_btn then
-         textbox:append_text(right_analog.colliding_btn.data.char)
-         right_analog.currently_selected_btn = nil
-      end      
-   end
-
-   if joystick:isGamepadDown("b") then
-      b_was_down = true      
-   elseif b_was_down then
-      textbox:delete_last_char()
-      b_was_down = false
-   end
+   local analogs = {left_analog, right_analog}
 
    -- Check analog collisions
    for _, row in ipairs(vkeyboard.button_rows) do
       for _, btn in ipairs(row) do
-         if left_analog.state == "active" and aabb(
-            btn.collider_x,              btn.collider_y,
-            btn.collider_width,          btn.collider_height,
-            left_analog.x,               left_analog.y,
-            left_analog.collider_radius, left_analog.collider_radius
-         ) then
-            if left_analog.colliding_btn == nil or
-             not left_analog.colliding_btn.is_colliding then
-               btn.is_colliding = true
-               left_analog.colliding_btn = btn
+         for _, analog in ipairs(analogs) do
+            if analog.state == "inactive" then goto continue end
+
+            local ev = analog.collider:do_collision(btn.collider, get_time())
+            if ev == "enter" then
+               if analog.collider:get_first_colliding() == btn.collider then
+                  btn:set_state("hovered")
+               end
+            elseif ev == "exit" then
+               btn:set_state("idle")
+               local col = analog.collider:get_first_colliding()
+               if col then col.parent:set_state("hovered") end
             end
-         elseif right_analog.state == "active" and aabb(
-            btn.collider_x,               btn.collider_y,
-            btn.collider_width,           btn.collider_height,
-            right_analog.x,               right_analog.y,
-            right_analog.collider_radius, right_analog.collider_radius
-         ) then
-            if right_analog.colliding_btn == nil or
-             not right_analog.colliding_btn.is_colliding then
-               btn.is_colliding = true
-               right_analog.colliding_btn = btn
-            end
-         else
-            btn.is_colliding = false
+            ::continue::
          end
       end
    end
@@ -243,5 +315,11 @@ function love.draw()
    right_analog:draw()
    textbox:draw()
 
+   -- Draw FPS
+   if global_conf.debug_mode then
+      lg.setColor(1, 1, 1, 1)
+      local fps = love.timer.getFPS()
+      love.graphics.print(fmt("%d fps", fps), 10, 10)
+   end
    deep.execute()
 end

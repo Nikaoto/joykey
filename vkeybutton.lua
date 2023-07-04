@@ -1,16 +1,28 @@
 local lg = love.graphics
 
+local Collider = require("collider")
+
 local Vkeybutton = {
-   x = 0,       collider_x = 0,
-   y = 0,       collider_y = 0,
+   x = 0,
+   y = 0,
    z = 2,
-   width = 110,  collider_width = 110,
-   height = 110, collider_height = 110,
-   scale = 1,
-   normal_scale = 1,
-   hovered_scale = 1.4,
+   width = 110,
+   height = 110,
+   collider = nil,
+   scale_x = 1,
+   scale_y = 1,
+   normal_scale_x = 1,
+   normal_scale_y = 1,
+   hovered_scale_x = 1.4,
+   hovered_scale_y = 1.4,
+   selected_scale_x = 1.8,
+   selected_scale_y = 1.1,
+   accepted_scale_x = 1.7,
+   accepted_scale_y = 1.9,
    normal_z = 2,
    hovered_z = 3,
+   selected_z = 4,
+   accepted_z = 5,
 
    color = {0.2, 0.2, 0.2, 1},
    text_color = {1, 1, 1, 1},
@@ -33,13 +45,86 @@ local Vkeybutton = {
    draw_collider = false,
    draw_drawable_footprint = false,
 
-   canvas = nil,
-   is_colliding = false,
-   was_colliding = false,
-   tweens = {
-      scale = nil,
-      scale_done = true,
+   states = {
+      ["idle"] = {
+         transitions = {
+            ["hovered"] = function(self)
+               self.z = self.hovered_z
+               self.collider.z = self.hovered_z
+               self.tweens.scale = tween.new(0.2, self, {
+                  scale_x = self.hovered_scale_x,
+                  scale_y = self.hovered_scale_y,
+               }, "outQuad")
+            end
+         },
+      },
+      ["hovered"] = {
+         transitions = {
+            ["selected"] = function(self)
+               self.z = self.selected_z
+               self.collider.z = self.selected_z
+               self.tweens.scale = tween.new(0.5, self, {
+                  scale_x = self.selected_scale_x,
+                  scale_y = self.selected_scale_y,
+               }, "outElastic")
+            end,
+            ["idle"] = function(self)
+               self.z = self.normal_z
+               self.collider.z = self.normal_z
+               self.tweens.scale = tween.new(0.2, self, {
+                  scale_x = self.normal_scale_x,
+                  scale_y = self.normal_scale_y,
+               }, "outCubic")
+            end
+         },
+      },
+      ["selected"] = {
+         transitions = {
+            ["accepted"] = function(self)
+               self.z = self.accepted_z
+               self.collider.z = self.accepted_z
+               self.tweens.scale = tween.new(0.2, self, {
+                  scale_x = self.accepted_scale_x,
+                  scale_y = self.accepted_scale_y,
+               }, "outElastic", function(self)
+                  self:set_state("hovered")
+               end)
+            end,
+            ["idle"] = function(self)
+               self.z = self.normal_z
+               self.collider.z = self.normal_z
+               self.tweens.scale = tween.new(0.1, self, {
+                  scale_x = self.normal_scale_x,
+                  scale_y = self.normal_scale_y,
+               }, "outCubic")
+            end,
+         }
+      },
+      ["accepted"] = {
+         transitions = {
+            ["idle"] = function(self)
+               self.z = self.normal_z
+               self.collider.z = self.normal_z
+               self.tweens.scale = tween.new(0.08, self, {
+                  scale_x = self.normal_scale_x,
+                  scale_y = self.normal_scale_y,
+               }, "outCubic")
+            end,
+            ["hovered"] = function(self)
+               self.z = self.hovered_z
+               self.collider.z = self.hovered_z
+               self.tweens.scale = tween.new(0.2, self, {
+                  scale_x = self.hovered_scale_x,
+                  scale_y = self.hovered_scale_y,
+               }, "outQuad")
+            end,
+         },
+      },
+      ["false_accepted"] = { transitions = {}},
    },
+   state = "idle",
+   canvas = nil,
+   tweens = nil,
 }
 
 function Vkeybutton:new(o)
@@ -54,18 +139,21 @@ function Vkeybutton:new(o)
 end
 
 function Vkeybutton:resize_collider()
-   self.collider_x = self.x
-   self.collider_y = self.y
-   self.collider_width = self.width
-   self.collider_height = self.height
+   self.collider.x = self.x
+   self.collider.y = self.y
+   self.collider.width = self.width
+   self.collider.height = self.height
 end
 
 function Vkeybutton:init()
    self.z = self.normal_z
+   self.tweens = { scale = nil }
 
-   if self.fit_collider then
-      self:resize_collider()
-   end
+   self.collider = Collider:new({
+      parent = self,
+      z = self.z
+   })
+   self:resize_collider()
 
    -- If text & font given, we create our own drawable
    if self.text then
@@ -107,7 +195,7 @@ function Vkeybutton:init()
       )
 
       if self.draw_drawable_footprint or global_conf.debug_mode then
-         lg.setColor(1, 0, 0, 0.1)
+         lg.setColor(1, 0, 0, 0.4)
          lg.rectangle(
             "fill",
             self.drawable_offset_x,
@@ -129,68 +217,53 @@ function Vkeybutton:draw_actual()
          self.x + self.width/2,
          self.y + self.height/2,
          0,
-         self.scale,
-         self.scale,
+         self.scale_x,
+         self.scale_y,
          self.width/2,
          self.height/2
       )
    end
    lg.setBlendMode("alpha")
 
-   -- Draw collider
-   if self.draw_collider or global_conf.debug_mode then
-      lg.setColor(0, 0, 1, 1)
-      lg.rectangle(
-         "line",
-         self.collider_x,
-         self.collider_y,
-         self.collider_width,
-         self.collider_height
-      )
+   if self.print_state or global_conf.debug_mode then
+      lg.print(self.state, self.x, self.y)
    end
 end
 
 function Vkeybutton:draw()
    deep.queue(self.z, self.draw_actual, self)
+
+   self.collider:draw()
 end
 
 function Vkeybutton:update_collider()
-   self.collider_x = self.x - (self.scale - 1)/2 * self.width
-   self.collider_y = self.y - (self.scale - 1)/2 * self.height
-   self.collider_width = self.width * self.scale
-   self.collider_height = self.height * self.scale
+   self.collider.x = self.x - (self.scale_x - 1)/2 * self.width
+   self.collider.y = self.y - (self.scale_y - 1)/2 * self.height
+   self.collider.width = self.width * self.scale_x
+   self.collider.height = self.height * self.scale_y
+end
+
+function Vkeybutton:set_state(new_state)
+   if self.state == new_state then return end
+
+   local trans = self.states[self.state].transitions[new_state]
+   if trans then trans(self) end
+   self.state = new_state
 end
 
 function Vkeybutton:update(dt)
    -- Update collider
    self:update_collider()
 
-   -- Check collision enter
-   if not self.was_colliding and self.is_colliding then
-      self.z = self.hovered_z
-      self.tweens.scale = tween.new(0.1, self, {
-         scale = self.hovered_scale,
-         tweens = { scale = nil },
-      }, "outQuad")
-   elseif self.was_colliding and not self.is_colliding then
-      -- Check collision exit
-      self.z = self.normal_z
-      self.tweens.scale = tween.new(0.2, self, {
-         scale = self.normal_scale,
-         tweens = { scale = nil },
-      }, "outCubic")
-   end
-
    -- Update tweens
    if self.tweens.scale then
       self.tweens.scale:update(dt)
    end
 
-   -- Save collision state for next frame
-   if not self.is_colliding then
-      self.was_colliding = true
-   else
-      self.was_colliding = false
+   -- State machine
+   local s = self.states[self.state]
+   if s and s.update then
+      s.update(dt)
    end
 end
 
