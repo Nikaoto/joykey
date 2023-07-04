@@ -55,18 +55,18 @@ function aabb_objs(o1, o2)
 end
 
 function init_analogs()
-   local margin_x_from_edge = (vkeyboard.width / 3) * 0.8
+   local margin_x_from_edge = (vkeyboard.width / 3) * 0.7
    left_analog = Analog:new({
       print_state = true,
       x = vkeyboard.x + margin_x_from_edge,
       y = vkeyboard.y + vkeyboard.height / 2,
-      reach_radius = vkeyboard.width / 4
+      reach_radius = vkeyboard.width / 3
    })
    right_analog = Analog:new({
       print_state = true,
       x = vkeyboard.x + vkeyboard.width - margin_x_from_edge,
       y = vkeyboard.y + vkeyboard.height / 2,
-      reach_radius = vkeyboard.width / 4
+      reach_radius = vkeyboard.width / 3
    })
 end
 

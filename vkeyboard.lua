@@ -1,3 +1,5 @@
+local lg = love.graphics
+
 local Vkeyboard = {
    x = 0,
    y = 0,
@@ -49,7 +51,7 @@ end
 function Vkeyboard:rearrange_keys()
    local row_y = self.y
    for ri, row in ipairs(self.button_rows) do
-      local row_width = reduce_arr(row, 0, function(acc, btn)
+      local row_width = reduce_arr(row, -self.column_margin, function(acc, btn)
          return acc + btn.width + self.column_margin
       end)
       local row_height = max_in_arr(row, function(btn) return btn.height end)
@@ -85,7 +87,7 @@ function Vkeyboard:draw_actual()
 end
 
 function Vkeyboard:draw()
-   deep.queue(self.z, self.draw_actual, self)
+   deep.queue(self.z + 10, self.draw_actual, self)
 
    -- Draw buttons
    for i, row in ipairs(self.button_rows) do
