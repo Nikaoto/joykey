@@ -106,7 +106,7 @@ function Vkeybutton:init()
          self.drawable_offset_y + self.drawable_adjust_offset_y
       )
 
-      if self.draw_drawable_footprint then
+      if self.draw_drawable_footprint or global_conf.debug_mode then
          lg.setColor(1, 0, 0, 0.1)
          lg.rectangle(
             "fill",
@@ -138,7 +138,7 @@ function Vkeybutton:draw_actual()
    lg.setBlendMode("alpha")
 
    -- Draw collider
-   if self.draw_collider then
+   if self.draw_collider or global_conf.debug_mode then
       lg.setColor(0, 0, 1, 1)
       lg.rectangle(
          "line",

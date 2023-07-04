@@ -80,7 +80,7 @@ end
 
 function Vkeyboard:draw_actual()
    -- Draw outline
-   if self.draw_collider then
+   if self.draw_collider or global_conf.debug_mode then
       love.graphics.setColor(1, 0, 0, 1)
       love.graphics.rectangle("line", self.x, self.y, self.width, self.height)
    end

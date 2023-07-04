@@ -25,6 +25,7 @@ local Analog = {
    z = 10,
    state = "inactive",
    print_state = false,
+   draw_radius = false,
    tweens = {
       fade = nil,
    },
@@ -46,6 +47,19 @@ function Analog:init()
    self:set_state("active")
 end
 
+
+local function apply_deadzone(val)
+   if math.abs(val) > global_conf.axis_deadzone then
+      return val
+   else
+      return 0
+   end
+end
+
+local function mod_axis(val)
+   return apply_deadzone(val) * global_conf.axis_dampen_amount
+end
+
 function Analog:set_state(new_state)
    if self.state == new_state then return end
 
@@ -62,12 +76,16 @@ function Analog:set_state(new_state)
          ring_color = self.inactive_ring_color,
          shadow_color = self.inactive_shadow_color,
          tweens = { fade = nil },
-      }, "outQuad")
+      }, "outQuad", function(self)
+         self.colliding_btn.is_colliding = false
+      end)
       self.state = new_state
    end
 end
 
 function Analog:update(tilt_x, tilt_y, dt)
+   tilt_x = mod_axis(tilt_x)
+   tilt_y = mod_axis(tilt_y)
    self.x = self.anchor_x + self.reach_radius * tilt_x
    self.y = self.anchor_y + self.reach_radius * tilt_y
 
@@ -117,9 +135,23 @@ function Analog:draw_actual()
       self.inner_shadow_thickness
    )
 
-   if self.print_state then
+   if self.print_state or global_conf.debug_mode then
       lg.setColor(1, 1, 1, 1)
       lg.print(self.state, self.x, self.y)
+   end
+
+   -- Draw reach radius
+   if self.draw_radius or global_conf.debug_mode then
+      lg.setColor(0, 1, 1, 0.3)
+      lg.circle("fill", self.anchor_x, self.anchor_y,
+                self.reach_radius * global_conf.axis_dampen_amount)
+   end
+
+   -- Draw deadzone
+   if self.draw_deadzone or global_conf.debug_mode then
+      lg.setColor(0, 1, 0.7, 0.3)
+      lg.circle("fill", self.anchor_x, self.anchor_y,
+                self.reach_radius * global_conf.axis_deadzone)
    end
 end
 

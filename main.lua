@@ -21,6 +21,9 @@ local key_font = nil
 local key_font_size = 56
 
 global_conf = {
+   debug_mode = false,
+   axis_deadzone = 0.08,
+   axis_dampen_amount = 0.8,
    fullscreen = true,
    --background_color = {77/255, 169/255, 220/255, 1},
    background_color = {89/255, 157/255, 220/255, 1},
@@ -32,8 +35,6 @@ window_width = 0
 window_height = 0
 
 joystick = nil -- Currently active joystick
-axis_deadzone = 0.08
-axis_dampen_amount = 0.8
 b_was_down = false
 
 textbox = nil
@@ -57,13 +58,11 @@ end
 function init_analogs()
    local margin_x_from_edge = (vkeyboard.width / 3) * 0.7
    left_analog = Analog:new({
-      print_state = true,
       x = vkeyboard.x + margin_x_from_edge,
       y = vkeyboard.y + vkeyboard.height / 2,
       reach_radius = vkeyboard.width / 3
    })
    right_analog = Analog:new({
-      print_state = true,
       x = vkeyboard.x + vkeyboard.width - margin_x_from_edge,
       y = vkeyboard.y + vkeyboard.height / 2,
       reach_radius = vkeyboard.width / 3
@@ -82,18 +81,6 @@ function try_init_joystick()
    return false
 end
 
-function apply_deadzone(val)
-   if math.abs(val) > axis_deadzone then
-      return val
-   else
-      return 0
-   end
-end
-
-function mod_axis(val)
-   return apply_deadzone(val) * axis_dampen_amount
-end
-
 function love.load()
    love.window.updateMode({
       borderless = false,
@@ -108,16 +95,12 @@ function love.load()
    key_font = lg.newFont("fonts/courier.ttf", key_font_size)
    local make_vkeybutton = function (txt)
       return Vkeybutton:new({
-         draw_collider = true,
-         draw_drawable_footprint = false,
          text = txt,
          font = key_font,
          data = { type = "char", char = txt },
       })
    end
    local spacebar = Vkeybutton:new({
-      draw_collider = true,
-      draw_drawable_footprint = false,
       text = " ",
       width = 800,
       font = key_font,
@@ -130,7 +113,6 @@ function love.load()
       width = 1200,
       height = 480,
       recenter = true,
-      draw_collider = true,
       button_rows = {
          map_str("1234567890", make_vkeybutton),
          map_str("qwertyuiop", make_vkeybutton),
@@ -158,13 +140,13 @@ function love.update(dt)
 
    -- Do axis controls
    if left_analog then
-      local lx = mod_axis(joystick:getGamepadAxis("leftx"))
-      local ly = mod_axis(joystick:getGamepadAxis("lefty"))
+      local lx = joystick:getGamepadAxis("leftx")
+      local ly = joystick:getGamepadAxis("lefty")
       left_analog:update(lx, ly, dt)
    end
    if right_analog then
-      local rx = mod_axis(joystick:getGamepadAxis("rightx"))
-      local ry = mod_axis(joystick:getGamepadAxis("righty"))
+      local rx = joystick:getGamepadAxis("rightx")
+      local ry = joystick:getGamepadAxis("righty")
       right_analog:update(rx, ry, dt)
    end
 
@@ -204,7 +186,7 @@ function love.update(dt)
    -- Check analog collisions
    for _, row in ipairs(vkeyboard.button_rows) do
       for _, btn in ipairs(row) do
-         if aabb(
+         if left_analog.state == "active" and aabb(
             btn.collider_x,              btn.collider_y,
             btn.collider_width,          btn.collider_height,
             left_analog.x,               left_analog.y,
@@ -215,7 +197,7 @@ function love.update(dt)
                btn.is_colliding = true
                left_analog.colliding_btn = btn
             end
-         elseif aabb(
+         elseif right_analog.state == "active" and aabb(
             btn.collider_x,               btn.collider_y,
             btn.collider_width,           btn.collider_height,
             right_analog.x,               right_analog.y,
@@ -239,6 +221,10 @@ end
 function love.keyreleased(key)
    if key == "q" then
       love.event.quit()
+   end
+
+   if key == "f1" then
+      global_conf.debug_mode = not global_conf.debug_mode
    end
 end
 
