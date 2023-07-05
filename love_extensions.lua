@@ -4,7 +4,7 @@
 function love.graphics.bordered_rectangle(x, y, w, h, t, c, bc, r)
    -- Draw the border
    love.graphics.setColor(bc)
-   for i=0, t-1, 1 do
+   for i=0, t, 1 do
       love.graphics.rectangle("line", x+i, y+i, w-i*2, h-i*2, r, r)
    end
 

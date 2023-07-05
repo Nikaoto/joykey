@@ -9,6 +9,7 @@ function dumptable(t) print(inspect(t)) end
 fmt = string.format
 function printf(...) print(string.format(...)) end
 function get_time() return love.timer.getTime() end
+function lerp(a, b, x) return a + (b - a) * x end
 
 local Input = require("input")
 local Textbox = require("textbox")
@@ -29,8 +30,14 @@ global_conf = {
    fullscreen = false,
    --background_color = {77/255, 169/255, 220/255, 1},
    background_color = {89/255, 157/255, 220/255, 1},
+   analog_lerp = 0.2,
 }
 global_state = {
+}
+
+sounds = {
+   ["accept"] = nil,
+   ["select"] = nil,
 }
 
 window_width = 0
@@ -107,23 +114,27 @@ local jinput_actions = {
 
    ["select_left"] =   function()
       print("jinput_action: select_left")
-      left_analog:select_btn()
+      local hit = left_analog:select_btn()
+      if hit then love.audio.play(sounds.select) end
    end,
    ["accept_left"] =   function()
       print("jinput_action: accept_left")
       local accepted_btn = left_analog:accept_btn()
       if accepted_btn then
+         love.audio.play(sounds.accept)
          textbox:append_text(accepted_btn.data.char)
       end
    end,
    ["select_right"] =  function()
       print("jinput_action: select_right")
-      right_analog:select_btn()
+      local hit = right_analog:select_btn()
+      if hit then love.audio.play(sounds.select) end
    end,
    ["accept_right"] =  function()
       print("jinput_action: accept_right")
       local accepted_btn = right_analog:accept_btn()
       if accepted_btn then
+         love.audio.play(sounds.accept)
          textbox:append_text(accepted_btn.data.char)
       end
    end,
@@ -182,6 +193,10 @@ function love.load()
       fullscreentype = "desktop",
    })
    love.window.setDisplaySleepEnabled(false)
+
+   -- Load sounds
+   sounds.select = love.audio.newSource("sounds/select.wav", "static")
+   sounds.accept = love.audio.newSource("sounds/accept.wav", "static")
 
    window_width, window_height = love.graphics.getDimensions()
 
@@ -298,6 +313,30 @@ function love.keyreleased(key)
    if key == "f1" then
       global_conf.debug_mode = not global_conf.debug_mode
    end
+
+   if key == "1" then
+      global_conf.analog_lerp = global_conf.analog_lerp - 0.02
+   end
+
+   if key == "2" then
+      global_conf.analog_lerp = global_conf.analog_lerp + 0.02
+   end
+
+   if key == "3" then
+      global_conf.axis_deadzone = global_conf.axis_deadzone - 0.01
+   end
+
+   if key == "4" then
+      global_conf.axis_deadzone = global_conf.axis_deadzone + 0.01
+   end
+
+   if key == "5" then
+      global_conf.axis_dampen_amount = global_conf.axis_dampen_amount - 0.01
+   end
+
+   if key == "6" then
+      global_conf.axis_dampen_amount = global_conf.axis_dampen_amount + 0.01
+   end
 end
 
 function love.draw()
@@ -319,7 +358,12 @@ function love.draw()
    if global_conf.debug_mode then
       lg.setColor(1, 1, 1, 1)
       local fps = love.timer.getFPS()
-      love.graphics.print(fmt("%d fps", fps), 10, 10)
+      love.graphics.print(
+         fmt(
+            "%d fps\n" ..
+            "global_conf = %s",
+            fps, inspect(global_conf)
+         ), 10, 10)
    end
    deep.execute()
 end

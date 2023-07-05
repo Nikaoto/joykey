@@ -8,6 +8,4 @@ Alternative virtual keyboard for videogames.
 - 
 
 ## TODO
-- button click/release states and animations
 - try spreading out keys adjacent to the currently hovered key
-- fix key collider overlap bugs

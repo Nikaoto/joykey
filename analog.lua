@@ -98,9 +98,10 @@ end
 
 function Analog:select_btn()
    local col = self.collider:get_first_colliding()
-   if not col or not col.parent then return end
+   if not col or not col.parent then return false end
    self.selected_btn = col.parent
    col.parent:set_state("selected")
+   return true
 end
 
 function Analog:accept_btn()
@@ -120,8 +121,8 @@ end
 function Analog:update(tilt_x, tilt_y, dt)
    tilt_x = mod_axis(tilt_x)
    tilt_y = mod_axis(tilt_y)
-   self.x = self.anchor_x + self.reach_radius * tilt_x
-   self.y = self.anchor_y + self.reach_radius * tilt_y
+   self.x = lerp(self.x, self.anchor_x + self.reach_radius * tilt_x, global_conf.analog_lerp)
+   self.y = lerp(self.y, self.anchor_y + self.reach_radius * tilt_y, global_conf.analog_lerp)
    self.collider.x = self.x - self.collider.width/2
    self.collider.y = self.y - self.collider.height/2
 

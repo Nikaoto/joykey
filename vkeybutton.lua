@@ -32,6 +32,8 @@ local Vkeybutton = {
 
    corner_radius = 0,
    border_color = {0.8, 0.8, 0.8, 1},
+   idle_border_color = {0.8, 0.8, 0.8, 1},
+   hovered_border_color = {0.9, 0.9, 0.9, 1},
    border_thickness = 4,
 
    drawable = nil,
@@ -52,6 +54,7 @@ local Vkeybutton = {
                self.z = self.hovered_z
                self.collider.z = self.hovered_z
                self.tweens.scale = tween.new(0.2, self, {
+                  border_color = self.hovered_border_color,
                   scale_x = self.hovered_scale_x,
                   scale_y = self.hovered_scale_y,
                }, "outQuad")
@@ -72,6 +75,7 @@ local Vkeybutton = {
                self.z = self.normal_z
                self.collider.z = self.normal_z
                self.tweens.scale = tween.new(0.2, self, {
+                  border_color = self.idle_border_color,
                   scale_x = self.normal_scale_x,
                   scale_y = self.normal_scale_y,
                }, "outCubic")
@@ -94,6 +98,7 @@ local Vkeybutton = {
                self.z = self.normal_z
                self.collider.z = self.normal_z
                self.tweens.scale = tween.new(0.1, self, {
+                  border_color = self.idle_border_color,
                   scale_x = self.normal_scale_x,
                   scale_y = self.normal_scale_y,
                }, "outCubic")
@@ -106,6 +111,7 @@ local Vkeybutton = {
                self.z = self.normal_z
                self.collider.z = self.normal_z
                self.tweens.scale = tween.new(0.08, self, {
+                  border_color = self.idle_border_color,
                   scale_x = self.normal_scale_x,
                   scale_y = self.normal_scale_y,
                }, "outCubic")
@@ -114,6 +120,7 @@ local Vkeybutton = {
                self.z = self.hovered_z
                self.collider.z = self.hovered_z
                self.tweens.scale = tween.new(0.2, self, {
+                  border_color = self.hovered_border_color,
                   scale_x = self.hovered_scale_x,
                   scale_y = self.hovered_scale_y,
                }, "outQuad")
@@ -209,8 +216,8 @@ function Vkeybutton:init()
 end
 
 function Vkeybutton:draw_actual()
-   lg.setColor(1, 1, 1, 1)
    lg.setBlendMode("alpha", "premultiplied")
+   lg.setColor(1, 1, 1, 1)
    do
       lg.draw(
          self.canvas,
