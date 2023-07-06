@@ -1,4 +1,4 @@
-# joykey
+# joyboard
 Alternative virtual keyboard for videogames.
 
 ## Controls

@@ -29,7 +29,7 @@ global_conf = {
    debug_mode = false,
    axis_deadzone = 0.08,
    axis_dampen_amount = 0.8,
-   fullscreen = false,
+   fullscreen = true,
    --background_color = {77/255, 169/255, 220/255, 1},
    background_color = {89/255, 157/255, 220/255, 1},
    analog_lerp = 0.2,
@@ -250,12 +250,12 @@ function init_analogs()
    local margin_x_from_edge = vkeyboard.width * 0.25
    left_analog = Analog:new({
       x = vkeyboard.x + margin_x_from_edge,
-      y = vkeyboard.y + vkeyboard.height / 2 + 35,
+      y = vkeyboard.y + vkeyboard.height / 2 + 50,
       reach_radius = vkeyboard.width * 0.3
    })
    right_analog = Analog:new({
       x = vkeyboard.x + vkeyboard.width - margin_x_from_edge,
-      y = vkeyboard.y + vkeyboard.height / 2 + 35,
+      y = vkeyboard.y + vkeyboard.height / 2 + 50,
       reach_radius = vkeyboard.width * 0.3
    })
 end
@@ -343,7 +343,7 @@ function love.load()
       container_width = window_width,
       container_height = window_height,
       width = 1120,
-      height = 400,
+      height = 350,
       recenter = true,
       button_rows = {
          map_str("1234567890-", make_vkeybutton),
@@ -478,7 +478,9 @@ function love.draw()
    right_analog:draw()
    textbox:draw()
 
-   -- Draw FPS
+   deep.execute()
+
+   -- Draw config dump
    if global_conf.debug_mode then
       lg.setColor(1, 1, 1, 1)
       local fps = love.timer.getFPS()
@@ -489,5 +491,4 @@ function love.draw()
             fps, inspect(global_conf)
          ), 10, 10)
    end
-   deep.execute()
 end
