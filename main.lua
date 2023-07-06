@@ -215,6 +215,21 @@ function love.load()
       data = { type = "char", char = " " },
    })
 
+   local del = Vkeybutton:new({
+      drawable = lg.newImage("images/delete.png"),
+      corner_drawable = lg.newImage("images/XboxOne_X.png"),
+      width = 300,
+      data = { type = "action", action = "delete_accept" },
+   })
+
+   local done = Vkeybutton:new({
+      text = "Done",
+      font = key_font,
+      width = 300,
+      corner_drawable = lg.newImage("images/XboxOne_A.png"),
+      data = { type = "action", action = "done_accept" },
+   })
+
    vkeyboard = Vkeyboard:new({
       container_width = window_width,
       container_height = window_height,
@@ -222,11 +237,11 @@ function love.load()
       height = 480,
       recenter = true,
       button_rows = {
-         map_str("1234567890", make_vkeybutton),
-         map_str("qwertyuiop", make_vkeybutton),
-         map_str("asdfghjkl\"", make_vkeybutton),
-         map_str("zxcvbnm,.!",  make_vkeybutton),
-         {spacebar},
+         map_str("1234567890-+", make_vkeybutton),
+         map_str("qwertyuiop?!", make_vkeybutton),
+         map_str("asdfghjkl:;\"", make_vkeybutton),
+         map_str("zxcvbnm,./\\|",  make_vkeybutton),
+         {spacebar, del, done},
       }
    })
 

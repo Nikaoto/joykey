@@ -24,7 +24,11 @@ local Vkeybutton = {
    selected_z = 4,
    accepted_z = 5,
 
-   color = {0.2, 0.2, 0.2, 1},
+   color_tint = {0.9, 0.9, 0.9, 1},
+   idle_color_tint = {0.9, 0.9, 0.9, 1},
+   hovered_color_tint = {1, 1, 1, 1},
+   selected_color_tint = {1, 1, 1, 1},
+   color = {0.3, 0.3, 0.3, 1},
    text_color = {1, 1, 1, 1},
    text = nil,
    font = nil,
@@ -42,6 +46,13 @@ local Vkeybutton = {
    drawable_offset_x = 0,
    drawable_offset_y = 0,
    drawable_adjust_offset_y = 4,
+   corner_drawable = nil,
+   corner_drawable_x = 5,
+   corner_drawable_y = 5,
+   corner_drawable_width = 40,
+   corner_drawable_height = 40,
+   corner_drawable_sx = 1,
+   corner_drawable_sy = 1,
    center_drawable = true,
    fit_collider = true,
    draw_collider = false,
@@ -53,6 +64,7 @@ local Vkeybutton = {
             ["hovered"] = function(self)
                self.z = self.hovered_z
                self.collider.z = self.hovered_z
+               self.color_tint = self.hovered_color_tint
                self.tweens.scale = tween.new(0.2, self, {
                   border_color = self.hovered_border_color,
                   scale_x = self.hovered_scale_x,
@@ -66,6 +78,7 @@ local Vkeybutton = {
             ["selected"] = function(self)
                self.z = self.selected_z
                self.collider.z = self.selected_z
+               self.color_tint = self.selected_color_tint
                self.tweens.scale = tween.new(0.5, self, {
                   scale_x = self.selected_scale_x,
                   scale_y = self.selected_scale_y,
@@ -74,6 +87,7 @@ local Vkeybutton = {
             ["idle"] = function(self)
                self.z = self.normal_z
                self.collider.z = self.normal_z
+               self.color_tint = self.idle_color_tint
                self.tweens.scale = tween.new(0.2, self, {
                   border_color = self.idle_border_color,
                   scale_x = self.normal_scale_x,
@@ -97,6 +111,7 @@ local Vkeybutton = {
             ["idle"] = function(self)
                self.z = self.normal_z
                self.collider.z = self.normal_z
+               self.color_tint = self.idle_color_tint
                self.tweens.scale = tween.new(0.1, self, {
                   border_color = self.idle_border_color,
                   scale_x = self.normal_scale_x,
@@ -110,6 +125,7 @@ local Vkeybutton = {
             ["idle"] = function(self)
                self.z = self.normal_z
                self.collider.z = self.normal_z
+               self.color_tint = self.idle_color_tint
                self.tweens.scale = tween.new(0.08, self, {
                   border_color = self.idle_border_color,
                   scale_x = self.normal_scale_x,
@@ -119,6 +135,7 @@ local Vkeybutton = {
             ["hovered"] = function(self)
                self.z = self.hovered_z
                self.collider.z = self.hovered_z
+               self.color_tint = self.hovered_color_tint
                self.tweens.scale = tween.new(0.2, self, {
                   border_color = self.hovered_border_color,
                   scale_x = self.hovered_scale_x,
@@ -167,6 +184,15 @@ function Vkeybutton:init()
       self.drawable = lg.newText(self.font, self.text)
       self.drawable_width = self.drawable:getWidth()
       self.drawable_height = self.drawable:getHeight()
+   elseif self.drawable then
+      self.drawable_width, self.drawable_height = self.drawable:getDimensions()
+   end
+
+   -- Set corner_drawable scale
+   if self.corner_drawable then
+      local w, h = self.corner_drawable:getDimensions()
+      self.corner_drawable_sx = self.corner_drawable_width / w
+      self.corner_drawable_sy = self.corner_drawable_height / h
    end
 
    if self.center_drawable then
@@ -193,13 +219,39 @@ function Vkeybutton:init()
          self.corner_radius
       )
 
-      -- Drawable (text) inside the button
-      lg.setColor(self.text_color)
+      -- Drawable or text inside the button
+      if self.text then
+         lg.setColor(self.text_color)
+      else
+         lg.setColor(1, 1, 1, 1)
+      end
       lg.draw(
          self.drawable,
          self.drawable_offset_x,
          self.drawable_offset_y + self.drawable_adjust_offset_y
       )
+
+      -- Corner drawable
+      if self.corner_drawable then
+         lg.setColor(self.border_color)
+         lg.rectangle(
+            "fill",
+            0,
+            0,
+            self.corner_drawable_x*2 + self.corner_drawable_width,
+            self.corner_drawable_y*2 + self.corner_drawable_height
+         )
+
+         lg.setColor(1, 1, 1, 1)
+         lg.draw(
+            self.corner_drawable,
+            self.corner_drawable_x,
+            self.corner_drawable_y,
+            0,
+            self.corner_drawable_sx,
+            self.corner_drawable_sy
+         )
+      end
 
       if self.draw_drawable_footprint or global_conf.debug_mode then
          lg.setColor(1, 0, 0, 0.4)
@@ -217,7 +269,7 @@ end
 
 function Vkeybutton:draw_actual()
    lg.setBlendMode("alpha", "premultiplied")
-   lg.setColor(1, 1, 1, 1)
+   lg.setColor(self.color_tint)
    do
       lg.draw(
          self.canvas,
@@ -230,6 +282,7 @@ function Vkeybutton:draw_actual()
          self.height/2
       )
    end
+   lg.setColor(1, 1, 1, 1)
    lg.setBlendMode("alpha")
 
    if self.print_state or global_conf.debug_mode then
