@@ -96,19 +96,57 @@ jinput_conf.buttons["dpright"].capture_is_down = function(inp, btn, cnf, src)
    return src:getHat(1):find('r') ~= nil
 end
 
+local delbtn = nil
+local donebtn = nil
+local spacebtn = nil
+
 -- Maps 'action name' -> 'action callback'
 local jinput_actions = {
-   ["delete_select"] = function() print("jinput_action: delete_select") end,
-   ["exit_select"] =   function() print("jinput_action: exit_select") end,
-   ["done_select"] =   function() print("jinput_action: done_select") end,
-   ["space_select"] =  function() print("jinput_action: space_select") end,
+   ["done_select"] =   function()
+      if donebtn then
+         love.audio.play(sounds.select)
+         donebtn:set_state("selected")
+      end
+   end,
+   ["done_accept"] =   function()
+      if donebtn then
+         love.audio.play(sounds.accept)
+         donebtn:set_state("accepted")
+      end
+   end,
+
+   ["space_select"] =  function()
+      if spacebtn then
+         love.audio.play(sounds.select)
+         spacebtn:set_state("selected")
+      end
+   end,
+   ["space_accept"] =  function()
+      if spacebtn then
+         love.audio.play(sounds.accept)
+         spacebtn:set_state("accepted")
+      end
+   end,
+
+   ["delete_select"] = function()
+      print("jinput_action: delete_select")
+      if delbtn then
+         love.audio.play(sounds.select)
+         delbtn:set_state("selected")
+      end
+   end,
    ["delete_accept"] = function()
       print("jinput_action: delete_accept")
+      if delbtn then
+         love.audio.play(sounds.accept)
+         delbtn:set_state("accepted")
+      end
       textbox:delete_last_char()
    end,
+
+   ["exit_select"] =   function() print("jinput_action: exit_select") end,
    ["exit_accept"] =   function() print("jinput_action: exit_accept") end,
-   ["done_accept"] =   function() print("jinput_action: done_accept") end,
-   ["space_accept"] =  function() print("jinput_action: space_accept") end,
+
    ["next_layout"] =   function() print("jinput_action: next_layout") end,
    ["prev_layout"] =   function() print("jinput_action: prev_layout") end,
 
@@ -117,27 +155,38 @@ local jinput_actions = {
       local hit = left_analog:select_btn()
       if hit then love.audio.play(sounds.select) end
    end,
-   ["accept_left"] =   function()
-      print("jinput_action: accept_left")
+   ["accept_left"] =   function(self)
       local accepted_btn = left_analog:accept_btn()
       if accepted_btn then
          love.audio.play(sounds.accept)
-         textbox:append_text(accepted_btn.data.char)
+         if accepted_btn.data.type == "char" then
+            textbox:append_text(accepted_btn.data.char)
+         elseif accepted_btn.data.type == "action" then
+            local act = self[accepted_btn.data.action]
+            if act then act(self) end
+         end
       end
    end,
+
    ["select_right"] =  function()
       print("jinput_action: select_right")
       local hit = right_analog:select_btn()
       if hit then love.audio.play(sounds.select) end
    end,
-   ["accept_right"] =  function()
+   ["accept_right"] =  function(self)
       print("jinput_action: accept_right")
       local accepted_btn = right_analog:accept_btn()
       if accepted_btn then
          love.audio.play(sounds.accept)
-         textbox:append_text(accepted_btn.data.char)
+         if accepted_btn.data.type == "char" then
+            textbox:append_text(accepted_btn.data.char)
+         elseif accepted_btn.data.type == "action" then
+            local act = self[accepted_btn.data.action]
+            if act then act(self) end
+         end
       end
    end,
+
    ["shift"] =         function() print("jinput_action: shift") end,
    ["caret_left"] =    function() print("jinput_action: caret_left") end,
    ["caret_right"] =   function() print("jinput_action: caret_right") end,
@@ -208,24 +257,42 @@ function love.load()
          data = { type = "char", char = txt },
       })
    end
-   local spacebar = Vkeybutton:new({
-      text = " ",
-      width = 800,
+
+   shiftbtn = Vkeybutton:new({
+      text = "Shift",
+      width = 280,
       font = key_font,
+      corner_drawable = lg.newImage("images/XboxOne_LT.png"),
+      data = { type = "action", action = nil },
+   })
+
+   switchbtn = Vkeybutton:new({
+      text = "...",
+      font = key_font,
+      width = 150,
+      corner_drawable = lg.newImage("images/XboxOne_RT.png"),
+      data = { type = "action", action = nil },
+   })
+
+   spacebtn = Vkeybutton:new({
+      text = " ",
+      width = 500,
+      font = key_font,
+      corner_drawable = lg.newImage("images/XboxOne_Y.png"),
       data = { type = "char", char = " " },
    })
 
-   local del = Vkeybutton:new({
+   delbtn = Vkeybutton:new({
       drawable = lg.newImage("images/delete.png"),
       corner_drawable = lg.newImage("images/XboxOne_X.png"),
-      width = 300,
+      width = 220,
       data = { type = "action", action = "delete_accept" },
    })
 
-   local done = Vkeybutton:new({
+   donebtn = Vkeybutton:new({
       text = "Done",
       font = key_font,
-      width = 300,
+      width = 260,
       corner_drawable = lg.newImage("images/XboxOne_A.png"),
       data = { type = "action", action = "done_accept" },
    })
@@ -241,7 +308,7 @@ function love.load()
          map_str("qwertyuiop?!", make_vkeybutton),
          map_str("asdfghjkl:;\"", make_vkeybutton),
          map_str("zxcvbnm,./\\|",  make_vkeybutton),
-         {spacebar, del, done},
+         {shiftbtn, switchbtn, spacebtn, delbtn, donebtn},
       }
    })
 
@@ -271,13 +338,13 @@ function love.update(dt)
       -- on_release
       if btn_state.just_released then
          local action = jinput_actions[btn_conf.on_release]
-         if action then action() end
+         if action then action(jinput_actions) end
       end
 
       -- on_press
       if btn_state.just_pressed then
          local action = jinput_actions[btn_conf.on_press]
-         if action then action() end
+         if action then action(jinput_actions) end
       end
    end
 

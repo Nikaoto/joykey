@@ -70,7 +70,16 @@ local Vkeybutton = {
                   scale_x = self.hovered_scale_x,
                   scale_y = self.hovered_scale_y,
                }, "outQuad")
-            end
+            end,
+            ["selected"] = function(self)
+               self.z = self.selected_z
+               self.collider.z = self.selected_z
+               self.color_tint = self.selected_color_tint
+               self.tweens.scale = tween.new(0.5, self, {
+                  scale_x = self.selected_scale_x,
+                  scale_y = self.selected_scale_y,
+               }, "outElastic")
+            end,
          },
       },
       ["hovered"] = {
@@ -104,9 +113,7 @@ local Vkeybutton = {
                self.tweens.scale = tween.new(0.2, self, {
                   scale_x = self.accepted_scale_x,
                   scale_y = self.accepted_scale_y,
-               }, "outElastic", function(self)
-                  self:set_state("hovered")
-               end)
+               }, "outElastic")
             end,
             ["idle"] = function(self)
                self.z = self.normal_z
@@ -121,6 +128,15 @@ local Vkeybutton = {
          }
       },
       ["accepted"] = {
+         update = function(self, dt)
+            if self.tweens.scale.complete then
+               if self.collider:get_first_colliding() then
+                  self:set_state("hovered")
+               else
+                  self:set_state("idle")
+               end
+            end
+         end,
          transitions = {
             ["idle"] = function(self)
                self.z = self.normal_z
@@ -317,13 +333,13 @@ function Vkeybutton:update(dt)
 
    -- Update tweens
    if self.tweens.scale then
-      self.tweens.scale:update(dt)
+      self.tweens.scale.complete = self.tweens.scale:update(dt)
    end
 
    -- State machine
    local s = self.states[self.state]
    if s and s.update then
-      s.update(dt)
+      s.update(self, dt)
    end
 end
 
