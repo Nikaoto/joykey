@@ -50,38 +50,60 @@ right_analog = nil
 
 joystick = nil -- Currently active joystick
 jinput = nil -- Joystick input module
-local jinput_conf = {
-   capture_fns = {
-      is_button_down = function(inp, btn, cnf, src)
-         return src:isGamepadDown(btn)
-      end,
-      get_axis = function(inp, axis, cnf, src)
-         return src:getGamepadAxis(axis)
-      end,
-   },
-   buttons = {
-      ["a"] =             { on_release = "done_accept",   on_press = "done_select"   },
-      ["b"] =             { on_release = "exit_accept",   on_press = "exit_select"   },
-      ["x"] =             { on_release = "delete_accept", on_press = "delete_select" },
-      ["y"] =             { on_release = "space_accept",  on_press = "space_select"  },
-      ["leftshoulder"] =  { on_release = "accept_left",   on_press = "select_left"   },
-      ["rightshoulder"] = { on_release = "accept_right",  on_press = "select_right"  },
-      ["leftstick"] =     { on_release = "accept_left",   on_press = "select_left"   },
-      ["rightstick"] =    { on_release = "accept_right",  on_press = "select_right"  },
-      ["dpup"] =          { on_release = nil,             on_press = "caret_up"      },
-      ["dpdown"] =        { on_release = nil,             on_press = "caret_down"    },
-      ["dpleft"] =        { on_release = nil,             on_press = "caret_left"    },
-      ["dpright"] =       { on_release = nil,             on_press = "caret_right"   },
-   },
-   axii = {
-      ["leftx"] = {},
-      ["lefty"] = {},
-      ["rightx"] = {},
-      ["righty"] = {},
-      ["triggerleft"] = {},
-      ["triggerright"] = {},
-   },
-}
+local jinput_conf = {}
+do
+   local is_axis_down = function(inp, axis, cnf, src)
+      local threshold = cnf.thr
+      return cnf.thr < src:getGamepadAxis(cnf.axis_name)
+   end
+   jinput_conf = {
+      capture_fns = {
+         is_button_down = function(inp, btn, cnf, src)
+            return src:isGamepadDown(btn)
+         end,
+         get_axis = function(inp, axis, cnf, src)
+            return src:getGamepadAxis(axis)
+         end,
+         is_axis_down = is_axis_down,
+      },
+      buttons = {
+         ["a"] =             { on_release = "done_accept",   on_press = "done_select"   },
+         ["b"] =             { on_release = "exit_accept",   on_press = "exit_select"   },
+         ["x"] =             { on_release = "delete_accept", on_press = "delete_select" },
+         ["y"] =             { on_release = "space_accept",  on_press = "space_select"  },
+         ["leftshoulder"] =  { on_release = "accept_left",   on_press = "select_left"   },
+         ["rightshoulder"] = { on_release = "accept_right",  on_press = "select_right"  },
+         ["leftstick"] =     { on_release = "accept_left",   on_press = "select_left"   },
+         ["rightstick"] =    { on_release = "accept_right",  on_press = "select_right"  },
+         ["dpup"] =          { on_release = nil,             on_press = "caret_up"      },
+         ["dpdown"] =        { on_release = nil,             on_press = "caret_down"    },
+         ["dpleft"] =        { on_release = nil,             on_press = "caret_left"    },
+         ["dpright"] =       { on_release = nil,             on_press = "caret_right"   },
+         ["triggerleft_btn"] = {
+            thr = 0.8,
+            on_press = "shift_select",
+            on_release = "shift_accept",
+            axis_name = "triggerleft",
+            capture_is_down = is_axis_down,
+         },
+         ["triggerright_btn"] = {
+            thr = 0.8,
+            on_press = "switch_select",
+            on_release = "switch_accept",
+            axis_name = "triggerright",
+            capture_is_down = is_axis_down,
+         },
+      },
+      axii = {
+         ["leftx"] = {},
+         ["lefty"] = {},
+         ["rightx"] = {},
+         ["righty"] = {},
+         ["triggerleft"] = {},
+         ["triggerright"] = {},
+      },
+   }
+end
 
 jinput_conf.buttons["dpup"].capture_is_down = function(inp, btn, cnf, src)
    return src:getHat(1):find('u') ~= nil
@@ -99,6 +121,7 @@ end
 local delbtn = nil
 local donebtn = nil
 local spacebtn = nil
+local switchbtn = nil
 
 -- Maps 'action name' -> 'action callback'
 local jinput_actions = {
@@ -124,19 +147,18 @@ local jinput_actions = {
    ["space_accept"] =  function()
       if spacebtn then
          love.audio.play(sounds.accept)
+         textbox:append_text(spacebtn.data.char)
          spacebtn:set_state("accepted")
       end
    end,
 
    ["delete_select"] = function()
-      print("jinput_action: delete_select")
       if delbtn then
          love.audio.play(sounds.select)
          delbtn:set_state("selected")
       end
    end,
    ["delete_accept"] = function()
-      print("jinput_action: delete_accept")
       if delbtn then
          love.audio.play(sounds.accept)
          delbtn:set_state("accepted")
@@ -151,7 +173,6 @@ local jinput_actions = {
    ["prev_layout"] =   function() print("jinput_action: prev_layout") end,
 
    ["select_left"] =   function()
-      print("jinput_action: select_left")
       local hit = left_analog:select_btn()
       if hit then love.audio.play(sounds.select) end
    end,
@@ -169,12 +190,10 @@ local jinput_actions = {
    end,
 
    ["select_right"] =  function()
-      print("jinput_action: select_right")
       local hit = right_analog:select_btn()
       if hit then love.audio.play(sounds.select) end
    end,
    ["accept_right"] =  function(self)
-      print("jinput_action: accept_right")
       local accepted_btn = right_analog:accept_btn()
       if accepted_btn then
          love.audio.play(sounds.accept)
@@ -187,7 +206,32 @@ local jinput_actions = {
       end
    end,
 
-   ["shift"] =         function() print("jinput_action: shift") end,
+   ["shift_select"] = function()
+      if shiftbtn then
+         love.audio.play(sounds.select)
+         shiftbtn:set_state("selected")
+      end
+   end,
+   ["shift_accept"] = function()
+      if shiftbtn then
+         love.audio.play(sounds.accept)
+         shiftbtn:set_state("accepted")
+      end
+   end,
+
+   ["switch_select"] = function()
+      if switchbtn then
+         love.audio.play(sounds.select)
+         switchbtn:set_state("selected")
+      end
+   end,
+   ["switch_accept"] = function()
+      if switchbtn then
+         love.audio.play(sounds.accept)
+         switchbtn:set_state("accepted")
+      end
+   end,
+
    ["caret_left"] =    function() print("jinput_action: caret_left") end,
    ["caret_right"] =   function() print("jinput_action: caret_right") end,
    ["caret_up"] =      function() print("jinput_action: caret_up") end,
