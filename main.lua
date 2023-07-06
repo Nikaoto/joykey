@@ -19,9 +19,11 @@ local Vkeybutton = require("vkeybutton")
 local lg = love.graphics
 
 local text_font = nil
-local text_font_size = 56
+local text_font_size = 46
 local key_font = nil
-local key_font_size = 56
+local key_font_size = 46
+local action_key_font = nil
+local action_key_font_size = 28
 
 global_conf = {
    debug_mode = false,
@@ -135,6 +137,7 @@ local jinput_actions = {
       if donebtn then
          love.audio.play(sounds.accept)
          donebtn:set_state("accepted")
+         joystick:setVibration(1, 1, 0.1)
       end
    end,
 
@@ -149,6 +152,7 @@ local jinput_actions = {
          love.audio.play(sounds.accept)
          textbox:append_text(spacebtn.data.char)
          spacebtn:set_state("accepted")
+         joystick:setVibration(1, 1, 0.1)
       end
    end,
 
@@ -162,6 +166,7 @@ local jinput_actions = {
       if delbtn then
          love.audio.play(sounds.accept)
          delbtn:set_state("accepted")
+         joystick:setVibration(1, 1, 0.1)
       end
       textbox:delete_last_char()
    end,
@@ -203,6 +208,7 @@ local jinput_actions = {
             local act = self[accepted_btn.data.action]
             if act then act(self) end
          end
+         joystick:setVibration(1, 1, 0.1)
       end
    end,
 
@@ -216,6 +222,7 @@ local jinput_actions = {
       if shiftbtn then
          love.audio.play(sounds.accept)
          shiftbtn:set_state("accepted")
+         joystick:setVibration(1, 1, 0.1)
       end
    end,
 
@@ -229,6 +236,7 @@ local jinput_actions = {
       if switchbtn then
          love.audio.play(sounds.accept)
          switchbtn:set_state("accepted")
+         joystick:setVibration(1, 1, 0.1)
       end
    end,
 
@@ -238,30 +246,17 @@ local jinput_actions = {
    ["caret_down"] =    function() print("jinput_action: caret_down") end,
 }
 
-function aabb(x1, y1, w1, h1, x2, y2, w2, h2)
-   return
-      ((x1 <= x2 and x1 + w1 >= x2) or (x1 >= x2 and x2 + w2 >= x1))
-      and
-      ((y1 <= y2 and y1 + h1 >= y2) or (y1 >= y2 and y2 + h2 >= y1))
-end
-
-function aabb_objs(o1, o2)
-   return aabb(
-      o1.x, o1.y, o1.width, o1.height,
-      o2.x, o2.y, o2.width, o2.height)
-end
-
 function init_analogs()
-   local margin_x_from_edge = (vkeyboard.width / 3) * 0.7
+   local margin_x_from_edge = vkeyboard.width * 0.25
    left_analog = Analog:new({
       x = vkeyboard.x + margin_x_from_edge,
-      y = vkeyboard.y + vkeyboard.height / 2,
-      reach_radius = vkeyboard.width / 3
+      y = vkeyboard.y + vkeyboard.height / 2 + 35,
+      reach_radius = vkeyboard.width * 0.3
    })
    right_analog = Analog:new({
       x = vkeyboard.x + vkeyboard.width - margin_x_from_edge,
-      y = vkeyboard.y + vkeyboard.height / 2,
-      reach_radius = vkeyboard.width / 3
+      y = vkeyboard.y + vkeyboard.height / 2 + 35,
+      reach_radius = vkeyboard.width * 0.3
    })
 end
 
@@ -279,7 +274,7 @@ function try_init_joystick()
 end
 
 function love.load()
-   love.window.updateMode(1920, 1080, {
+   love.window.updateMode(1366, 768, {
       borderless = true,
       centered = true,
       fullscreen = global_conf.fullscreen,
@@ -294,6 +289,7 @@ function love.load()
    window_width, window_height = love.graphics.getDimensions()
 
    key_font = lg.newFont("fonts/courier.ttf", key_font_size)
+   action_key_font = lg.newFont("fonts/courier.ttf", action_key_font_size)
    local make_vkeybutton = function (txt)
       return Vkeybutton:new({
          text = txt,
@@ -304,39 +300,40 @@ function love.load()
 
    shiftbtn = Vkeybutton:new({
       text = "Shift",
-      width = 280,
-      font = key_font,
+      width = 200,
+      font = action_key_font,
       corner_drawable = lg.newImage("images/XboxOne_LT.png"),
       data = { type = "action", action = nil },
    })
 
    switchbtn = Vkeybutton:new({
       text = "...",
-      font = key_font,
-      width = 150,
+      font = action_key_font,
+      width = 140,
       corner_drawable = lg.newImage("images/XboxOne_RT.png"),
       data = { type = "action", action = nil },
    })
 
    spacebtn = Vkeybutton:new({
       text = " ",
-      width = 500,
-      font = key_font,
+      width = 340,
+      font = action_key_font,
       corner_drawable = lg.newImage("images/XboxOne_Y.png"),
       data = { type = "char", char = " " },
    })
 
    delbtn = Vkeybutton:new({
-      drawable = lg.newImage("images/delete.png"),
+      text = "Delete",
+      font = action_key_font,
       corner_drawable = lg.newImage("images/XboxOne_X.png"),
-      width = 220,
+      width = 200,
       data = { type = "action", action = "delete_accept" },
    })
 
    donebtn = Vkeybutton:new({
       text = "Done",
-      font = key_font,
-      width = 260,
+      font = action_key_font,
+      width = 180,
       corner_drawable = lg.newImage("images/XboxOne_A.png"),
       data = { type = "action", action = "done_accept" },
    })
@@ -344,14 +341,14 @@ function love.load()
    vkeyboard = Vkeyboard:new({
       container_width = window_width,
       container_height = window_height,
-      width = 1200,
-      height = 480,
+      width = 1120,
+      height = 400,
       recenter = true,
       button_rows = {
-         map_str("1234567890-+", make_vkeybutton),
-         map_str("qwertyuiop?!", make_vkeybutton),
-         map_str("asdfghjkl:;\"", make_vkeybutton),
-         map_str("zxcvbnm,./\\|",  make_vkeybutton),
+         map_str("1234567890-", make_vkeybutton),
+         map_str("qwertyuiop\"", make_vkeybutton),
+         map_str("asdfghjkl-_", make_vkeybutton),
+         map_str("zxcvbnm,.?!",  make_vkeybutton),
          {shiftbtn, switchbtn, spacebtn, delbtn, donebtn},
       }
    })
@@ -359,9 +356,9 @@ function love.load()
    text_font = lg.newFont("fonts/courier.ttf", text_font_size)
    textbox = Textbox:new({
       font = text_font,
-      width = 1200,
-      x = (window_width - 1200) / 2,
-      y = 120,
+      width = 1000,
+      x = (window_width - 1000) / 2,
+      y = 60,
    })
    
    try_init_joystick()
