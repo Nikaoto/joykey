@@ -285,6 +285,7 @@ function love.load()
    -- Load sounds
    sounds.select = love.audio.newSource("sounds/select.wav", "static")
    sounds.accept = love.audio.newSource("sounds/accept.wav", "static")
+   sounds.accept:setVolume(0)
 
    window_width, window_height = love.graphics.getDimensions()
 
